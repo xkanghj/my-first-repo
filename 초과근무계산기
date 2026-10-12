@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>공직 사회 초과근무수당 계산기</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between">
+
+    <header class="bg-indigo-900 text-white shadow-md">
+        <div class="max-w-4xl mx-auto px-4 py-6 flex flex-col sm:flex-row justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-calculator text-indigo-400"></i> 공직 사회 초과근무수당 계산기
+                </h1>
+                <p class="text-xs text-indigo-200 mt-1">공무원 보수규정 및 통상 단가 산식 기반 정밀 계산</p>
+            </div>
+            <div class="mt-4 sm:mt-0 flex gap-2">
+                <button onclick="app.resetAllData()" class="bg-indigo-800 hover:bg-indigo-700 text-xs px-3 py-2 rounded-lg transition border border-indigo-700 flex items-center gap-1">
+                    <i class="fa-solid fa-rotate-right"></i> 데이터 초기화
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8 w-full flex-grow grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Left Panel: Input & Settings (2 Columns on Desktop) -->
+        <div class="md:col-span-2 space-y-6">
+            
+            <!-- SECTION 1: Base Salary & Hourly Rate Settings -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-wallet text-indigo-600"></i> 1. 보수 및 시간당 단가 설정
+                </h2>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">직급 선택 (기준 월봉급액 참고)</label>
+                        <select id="rankSelect" onchange="app.handleRankChange()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <option value="custom">직접 입력</option>
+                            <option value="9g9s">9급 9호봉 (약 230만원)</option>
+                            <option value="9g1s">9급 1호봉 (약 189만원)</option>
+                            <option value="8g5s">8급 5호봉 (약 215만원)</option>
+                            <option value="7g7s">7급 7호봉 (약 270만원)</option>
+                            <option value="6g10s">6급 10호봉 (약 345만원)</option>
+                            <option value="5g5s">5급 5호봉 (약 385만원)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">월 봉급액 (원)</label>
+                        <input type="number" id="monthlySalary" value="2100000" oninput="app.calculateHourlyRate()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="mt-4 p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                        <span class="text-xs text-indigo-800 font-medium">산출된 시간당 초과근무 단가 (1시간 기준):</span>
+                        <div class="text-xs text-slate-500 mt-0.5">공식: [월봉급액 ÷ 209시간 × 1.5 (휴일/야간은 배수 가산)]</div>
+                    </div>
+                    <div class="text-right">
+                        <span id="calculatedHourlyRateDisplay" class="text-lg font-bold text-indigo-700">0 원</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: Daily Overtime Entry Form -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-plus text-indigo-600"></i> 2. 근무 기록 추가
+                </h2>
+
+                <form id="overtimeForm" onsubmit="app.addRecord(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">근무 날짜</label>
+                            <input type="date" id="recordDate" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">근무 유형</label>
+                            <select id="recordType" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                <option value="weekday">평일 초과근무 (정액 1시간 공제)</option>
+                                <option value="holiday">휴일(주말) 근무 (1일 단위 실시간)</option>
+                                <option value="night">야간 근무 (22:00 ~ 익일 06:00)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">근무 시간 (시간)</label>
+                            <input type="number" id="recordHours" step="0.5" min="0.5" max="24" value="2" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-xl text-sm transition shadow-sm flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-plus"></i> 기록 추가하기
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- SECTION 3: Recorded List -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-indigo-600"></i> 3. 이번 달 근무 내역 리스트
+                    </h2>
+                    <span id="recordCountBadge" class="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-full font-medium">총 0건</span>
+                </div>
+
+                <div class="overflow-x-auto max-h-80 overflow-y-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-slate-500 text-xs uppercase bg-slate-50 sticky top-0">
+                                <th class="p-3">날짜</th>
+                                <th class="p-3">유형</th>
+                                <th class="p-3">인정 시간</th>
+                                <th class="p-3">예상 수당</th>
+                                <th class="p-3 text-right">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordTableBody">
+                            <!-- Dynamic rows will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="emptyTableNotice" class="text-center py-8 text-slate-400 text-sm">
+                    등록된 초과근무 내역이 없습니다. 위 폼을 통해 기록을 추가해 주세요.
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Panel: Summary & Details (1 Column on Desktop) -->
+        <div class="space-y-6">
+            
+            <!-- SECTION 4: Total Expected Allowance Card -->
+            <div class="bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-2xl shadow-lg p-6 relative overflow-hidden">
+                <div class="absolute -right-6 -bottom-6 opacity-10 text-9xl">
+                    <i class="fa-solid fa-won-sign"></i>
+                </div>
+                <h3 class="text-sm font-medium text-indigo-200 uppercase tracking-wider mb-2">이번 달 예상 초과근무수당 총액</h3>
+                <div class="text-3xl font-extrabold text-white mb-4" id="totalAllowanceDisplay">0 원</div>
+
+                <div class="space-y-2 pt-4 border-t border-indigo-800/85 text-xs">
+                    <div class="flex justify-between text-indigo-100">
+                        <span>평일 인정 총 시간:</span>
+                        <span id="summaryWeekdayHours" class="font-semibold">0 시간</span>
+                    </div>
+                    <div class="flex justify-between text-indigo-100">
+                        <span>휴일 인정 총 시간:</span>
+                        <span id="summaryHolidayHours" class="font-semibold">0 시간</span>
+                    </div>
+                    <div class="flex justify-between text-indigo-100">
+                        <span>야간 인정 총 시간:</span>
+                        <span id="summaryNightHours" class="font-semibold">0 시간</span>
+                    </div>
+                    <div class="flex justify-between text-indigo-100 pt-2 border-t border-indigo-800/50">
+                        <span>총 초과근무 시간:</span>
+                        <span id="summaryTotalHours" class="font-bold text-amber-300">0 시간</span>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <button onclick="app.exportSummary()" class="w-full bg-white/10 hover:bg-white/20 text-white text-xs font-medium py-2.5 px-4 rounded-xl transition border border-white/20 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-arrow-down"></i> 내역 요약 복사하기
+                    </button>
+                </div>
+            </div>
+
+            <!-- SECTION 5: Policy Guide & Info -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h3 class="text-md font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-indigo-600"></i> 공무원 초과근무수당 안내
+                </h3>
+                <ul class="space-y-2 text-xs text-slate-600 leading-relaxed list-disc list-inside">
+                    <li><strong class="text-slate-700">기본 단가 산식:</strong> 월 봉급액 ÷ 209 × 1.5 (시간당)</li>
+                    <li><strong class="text-slate-700">평일 정액 공제:</strong> 국가공무원 복무규정에 따라 평일 초과근무는 기본 1시간이 공제됩니다. (예: 3시간 입력 시 2시간 인정)</li>
+                    <li><strong class="text-slate-700">휴일 및 야간:</strong> 휴일 근무 및 야간근무(22시~06시)는 규정에 따른 가산 수당 단가가 반영됩니다.</li>
+                    <li><strong class="text-slate-700">상한 시간:</strong> 국가/공공기관 규정에 따라 월 인정 상한 시간(보통 57시간~67시간 등)이 존재하므로 소속 기관 지침을 확인하세요.</li>
+                </ul>
+            </div>
+
+        </div>
+
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 mt-12 py-6 text-center text-xs text-slate-500">
+        <div class="max-w-4xl mx-auto px-4">
+            공직 사회 초과근무수당 계산기 &bull; 참고용 계산기로 실제 지급액은 부서별 인사/급여 담당 부서의 산정과 다를 수 있습니다.
+        </div>
+    </footer>
+
+    <script>
+        class OvertimeCalculator {
+            constructor() {
+                this.monthlySalary = 2100000;
+                this.records = [];
+                this.standardHours = 209; // 통상 월 근로시간
+                this.init();
+            }
+
+            init() {
+                // 오늘 날짜 기본 세팅
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('recordDate').value = today;
+
+                // LocalStorage에서 데이터 복원
+                this.loadFromStorage();
+                this.calculateHourlyRate();
+                this.render();
+            }
+
+            handleRankChange() {
+                const rank = document.getElementById('rankSelect').value;
+                const salaryInput = document.getElementById('monthlySalary');
+
+                const sampleSalaries = {
+                    '9g1s': 1890000,
+                    '9g9s': 2300000,
+                    '8g5s': 2150000,
+                    '7g7s': 2700000,
+                    '6g10s': 3450000,
+                    '5g5s': 3850000
+                };
+
+                if (sampleSalaries[rank]) {
+                    salaryInput.value = sampleSalaries[rank];
+                }
+                this.calculateHourlyRate();
+            }
+
+            calculateHourlyRate() {
+                const salaryVal = parseFloat(document.getElementById('monthlySalary').value) || 0;
+                this.monthlySalary = salaryVal;
+
+                // 기본 시간당 단가: 월봉급액 / 209 * 1.5
+                const hourlyRate = (this.monthlySalary / this.standardHours) * 1.5;
+                
+                // 디스플레이 업데이트
+                document.getElementById('calculatedHourlyRateDisplay').innerText = Math.round(hourlyRate).toLocaleString() + ' 원';
+                
+                this.saveToStorage();
+                this.renderCalculations();
+            }
+
+            getHourlyRates() {
+                const baseRate = (this.monthlySalary / this.standardHours) * 1.5;
+                return {
+                    weekday: baseRate,
+                    holiday: baseRate, // 휴일 기본 1.5배 (기관별 가산율 반영 가능)
+                    night: baseRate * 1.5 // 야간 가산
+                };
+            }
+
+            addRecord(event) {
+                event.preventDefault();
+                const date = document.getElementById('recordDate').value;
+                const type = document.getElementById('recordType').value;
+                const inputHours = parseFloat(document.getElementById('recordHours').value) || 0;
+
+                if (inputHours <= 0) {
+                    alert('근무 시간은 0보다 커야 합니다.');
+                    return;
+                }
+
+                // 평일일 경우 1시간 공제 적용 (단, 1시간 이하일 경우 0시간)
+                let effectiveHours = inputHours;
+                if (type === 'weekday') {
+                    effectiveHours = Math.max(0, inputHours - 1.0);
+                }
+
+                const newRecord = {
+                    id: Date.now(),
+                    date,
+                    type,
+                    inputHours,
+                    effectiveHours
+                };
+
+                this.records.push(newRecord);
+                this.records.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                this.saveToStorage();
+                this.render();
+
+                // 입력 폼 초기화 일부 유지
+                document.getElementById('recordHours').value = '2';
+            }
+
+            deleteRecord(id) {
+                this.records = this.records.filter(r => r.id !== id);
+                this.saveToStorage();
+                this.render();
+            }
+
+            resetAllData() {
+                if (confirm('모든 근무 기록을 초기화하시겠습니까?')) {
+                    this.records = [];
+                    this.saveToStorage();
+                    this.render();
+                }
+            }
+
+            saveToStorage() {
+                const data = {
+                    monthlySalary: this.monthlySalary,
+                    records: this.records
+                };
+                localStorage.setItem('civil_overtime_calc_data', JSON.stringify(data));
+            }
+
+            loadFromStorage() {
+                const saved = localStorage.getItem('civil_overtime_calc_data');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        this.monthlySalary = parsed.monthlySalary || 2100000;
+                        this.records = parsed.records || [];
+                        document.getElementById('monthlySalary').value = this.monthlySalary;
+                    } catch (e) {
+                        console.error('Failed to load storage data', e);
+                    }
+                }
+            }
+
+            render() {
+                this.renderTable();
+                this.renderCalculations();
+            }
+
+            renderTable() {
+                const tbody = document.getElementById('recordTableBody');
+                const notice = document.getElementById('emptyTableNotice');
+                const badge = document.getElementById('recordCountBadge');
+
+                tbody.innerHTML = '';
+                badge.innerText = `총 ${this.records.length}건`;
+
+                if (this.records.length === 0) {
+                    notice.classList.remove('hidden');
+                    return;
+                }
+                notice.classList.add('hidden');
+
+                const rates = this.getHourlyRates();
+
+                this.records.forEach(record => {
+                    let typeLabel = '';
+                    let badgeColor = '';
+                    let rate = rates.weekday;
+
+                    if (record.type === 'weekday') {
+                        typeLabel = '평일 (1시간공제)';
+                        badgeColor = 'bg-blue-50 text-blue-700 border-blue-200';
+                        rate = rates.weekday;
+                    } else if (record.type === 'holiday') {
+                        typeLabel = '휴일 근무';
+                        badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                        rate = rates.holiday;
+                    } else if (record.type === 'night') {
+                        typeLabel = '야간 근무';
+                        badgeColor = 'bg-purple-50 text-purple-700 border-purple-200';
+                        rate = rates.night;
+                    }
+
+                    const expectedPay = record.effectiveHours * rate;
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b border-slate-100 hover:bg-slate-50 transition text-xs';
+                    tr.innerHTML = `
+                        <td class="p-3 font-medium text-slate-700">${record.date}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded-full border text-[11px] font-medium ${badgeColor}">${typeLabel}</span></td>
+                        <td class="p-3 text-slate-600">
+                            ${record.effectiveHours} 시간 <span class="text-[10px] text-slate-400">(입력:${record.inputHours}h)</span>
+                        </td>
+                        <td class="p-3 font-semibold text-indigo-600">${Math.round(expectedPay).toLocaleString()} 원</td>
+                        <td class="p-3 text-right">
+                            <button onclick="app.deleteRecord(${record.id})" class="text-slate-400 hover:text-red-600 transition p-1">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            renderCalculations() {
+                const rates = this.getHourlyRates();
+                let totalWeekdayHours = 0;
+                let totalHolidayHours = 0;
+                let totalNightHours = 0;
+                let totalPay = 0;
+
+                this.records.forEach(record => {
+                    let rate = rates.weekday;
+                    if (record.type === 'weekday') {
+                        totalWeekdayHours += record.effectiveHours;
+                        rate = rates.weekday;
+                    } else if (record.type === 'holiday') {
+                        totalHolidayHours += record.effectiveHours;
+                        rate = rates.holiday;
+                    } else if (record.type === 'night') {
+                        totalNightHours += record.effectiveHours;
+                        rate = rates.night;
+                    }
+                    totalPay += record.effectiveHours * rate;
+                });
+
+                const totalHours = totalWeekdayHours + totalHolidayHours + totalNightHours;
+
+                document.getElementById('summaryWeekdayHours').innerText = totalWeekdayHours.toFixed(1) + ' 시간';
+                document.getElementById('summaryHolidayHours').innerText = totalHolidayHours.toFixed(1) + ' 시간';
+                document.getElementById('summaryNightHours').innerText = totalNightHours.toFixed(1) + ' 시간';
+                document.getElementById('summaryTotalHours').innerText = totalHours.toFixed(1) + ' 시간';
+                document.getElementById('totalAllowanceDisplay').innerText = Math.round(totalPay).toLocaleString() + ' 원';
+            }
+
+            exportSummary() {
+                const rates = this.getHourlyRates();
+                let totalPay = 0;
+                let totalHours = 0;
+
+                this.records.forEach(record => {
+                    let rate = rates.weekday;
+                    if (record.type === 'holiday') rate = rates.holiday;
+                    if (record.type === 'night') rate = rates.night;
+                    totalPay += record.effectiveHours * rate;
+                    totalHours += record.effectiveHours;
+                });
+
+                const summaryText = `[공직 초과근무수당 예상 요약]\n- 월 봉급액: ${this.monthlySalary.toLocaleString()}원\n- 총 초과근무 인정시간: ${totalHours.toFixed(1)}시간\n- 예상 수당 총액: ${Math.round(totalPay).toLocaleString()}원`;
+
+                // 클립보드 복사 실행 (안전한 document.execCommand 활용 또는 clipboard API)
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(summaryText).then(() => {
+                        alert('근무 요약 내용이 클립보드에 복사되었습니다.');
+                    }).catch(() => {
+                        this.fallbackCopy(summaryText);
+                    });
+                } else {
+                    this.fallbackCopy(summaryText);
+                }
+            }
+
+            fallbackCopy(text) {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    alert('근무 요약 내용이 클립보드에 복사되었습니다.');
+                } catch (e) {
+                    alert('복사에 실패했습니다.');
+                }
+                document.body.removeChild(textarea);
+            }
+        }
+
+        // 앱 인스턴스 생성
+        const app = new OvertimeCalculator();
+    </script>
+</body>
+</html>
